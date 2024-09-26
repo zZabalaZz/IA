@@ -1,246 +1,131 @@
 import streamlit as st
-
-#importar las bibliotecas tradicionales de numpy y pandas
-import numpy as np
+import joblib
 import pandas as pd
-
-#importar las biliotecas graficas e imágenes
-import plotly.express as px
+import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier  # Importamos RandomForestClassifier para la predicción
 
-
-import joblib as jb
-
-from sklearn.ensemble import RandomForestClassifier
-
-
-
-imagen_video = Image.open("delitos-federales.jpg") 
-
-
-#Librerias no usadas
-#from streamlit_lottie import st_lottie
-#import requests
-
-## Iniciar barra lateral en la página web y título e ícono
-
-st.set_page_config(
-  page_title="ML Delitos Bucaramanga",
-  page_icon="4321369.ico",
-  initial_sidebar_state='auto'
-  )
-
+# Cargar los modelos y codificadores
 @st.cache_data
 def load_data():
-  df= pd.read_csv('Delito Bucaramanga_preprocesar.csv', delimiter=",") #Currently on my local machine
-  return df
-df= load_data()
+    df = pd.read_csv('DelitosBucaramanga.csv', delimiter=",")  # Currently on my local machine
+    return df
 
 @st.cache_resource
 def load_models():
-  codEdad=jb.load('codEdad.bin')
-  codHorario=jb.load('codHorario.bin')
-  codGenero=jb.load('codGenero.bin')
-  codDia=jb.load('codDia.bin')
-  codComuna=jb.load('codComuna.bin')
-  modeloBA=jb.load('modeloBA.bin')
-  return codEdad,codHorario,codGenero,codDia,codComuna,modeloBA
-codEdad,codHorario,codGenero,codDia,codComuna,modeloBA = load_models()
+    codEdad = joblib.load('codEdad.bin')
+    codHorario = joblib.load('codHorario.bin')
+    codGenero = joblib.load('codGenero.bin')
+    codDia = joblib.load('codDia.bin')
+    codComuna = joblib.load('codComuna.bin')
+    modeloBA = joblib.load('modeloBA.bin')  # Cargamos el modelo RandomForestClassifier
+    return codEdad, codHorario, codGenero, codDia, codComuna, modeloBA
 
-#Primer contenedor
-st.markdown('----')
-with st.container():
-  st.subheader("Modelo Machine Learning para prevencion de delitos en Bucaramanga")
-  st.title("Reporte Final ")
-  st.write("Realizado por Alfredo Díaz Claros:wave:")
-  st.write("""
+# Cargar los datos y los modelos
+df = load_data()
+codEdad, codHorario, codGenero, codDia, codComuna, modeloBA = load_models()
 
-**Introducción** 
-Los datos fueron tomados con la Información de los delitos ocurridos en el municipio de Bucaramanfa,según la modalidad y 
-conducta delictiva, barrios y comunas de ocurrencia, armas y medios empleados, móvil del agresor y de la víctima,
-curso de vida y género de la víctima, con una desagregación temporal por mes, día, y hora de ocurrencia.
+# Configuración de la página
+st.set_page_config(
+    page_title="Predicción de Delitos en Bucaramanga",
+    page_icon="laley.jpeg",  # Cambia este archivo por el nombre o URL del icono que quieras usar
+    layout="centered"
+)
 
-Datos Actualizados en la fuente: 2 de septiembre de 2023
+# Título y descripción del proyecto
+st.markdown("<h1 style='color: #340467;'>Predicción de delitos en Bucaramanga</h1>", unsafe_allow_html=True)
+st.markdown("---")
+st.write("Brayan León - Sergio Amaya")
 
-Esta aplicacion es el resultado de un modelo de “machine learning” para predecir el delito en Bucaramanga, 
-ciudad intermedia de Colombia. 
-Se utilizó modelos supervidados de clasificacion y de obtuvo los mejores resutlado con
-Se identificó que los mejores resultados en la predicción del crimen se dieron con RandomForestClassifier-
-
-A pesar de que existen limitaciones con la información útil para la predicción, se probarion 6 opciones y el mejor modelp
-arrojó  más del 66 % de exactitud (accuracy.).
-Concluimo que los modelos de predicción del delito basado en los articulos del código civil
-que se constituyen una herramienta útil para construir estrategias de prevención pero el objetivo no es estigmatizar
-los barrios o comunas de la ciudad.
+st.markdown("""
+### Objetivo del Proyecto:
+El propósito de este proyecto es determinar la probabilidad de ocurrencia de un delito en función de varias características observables.
+El modelo predice aspectos clave como el barrio donde ocurre el delito, el tipo de delito, el móvil del agresor y el arma potencialmente usada.
+Estas predicciones se basan en datos sobre la comuna, el rango de horario, el sexo y el curso de vida de la víctima, proporcionando una herramienta
+que puede ayudar a las autoridades y a la comunidad en la prevención y análisis de patrones delictivos en Bucaramanga.
 """)
+st.markdown("---")
 
+# Mostrar resumen de los datos
+st.write("El número total de registros cargados es: ", len(df))
+st.write("El rango de fechas de los delitos va desde ", pd.to_datetime(df['fecha_hecho']).min(), " hasta ", pd.to_datetime(df['fecha_hecho']).max())
+st.write(f"El número de tipos de delitos registrados es: {len(df['delito_solo'].unique())}, distribuidos en {len(df['barrios_hecho'].unique())} barrios de {len(df['nom_com'].unique())} comunas.")
 
-st.markdown('----')
-with st.container():
-  st.write("---")
-  left_column, right_column = st.columns(2)
-  with left_column:
-    st.subheader("Las lbrerias usadas para entrenar el demos fueron")
-    st.write(
-      """
-      El objetivo de este trabajo acadeémico es construir una herramienta en código Python para predecir la categoria
-      de delito que se comete tienen en cuentas las siguietes caracterísitas:
-      'EDAD', 'GENERO', 'RANGO_HORARIO_ORDEN', 'NOM_COM', 'DIA_NOMBRE'.
-      El modelo elegido fue Bosque Aleatorio.
-      
-      Este proyecto ayuda que con la información las personas y las autoridades definan acciones eficientes
-      en la prevención del delito concentrando sus recursos en pequeñas unidades geográficas, duplicar los tiempos de patrullaje en zonas 
-      combinando tiempos adicionales de patrullaje y en general los ciudadanos tomar sus medidas preventivas.
-      Al frente se encuenta el  codigo finalmente usado despúes de la etapa de ingeniería de caracteristicas.
-      """
-    )
+# Mostrar vista previa de los datos
+st.subheader("Vista Previa de los Datos")
+st.dataframe(df.head(5))
 
-  with right_column:
-      st.subheader("Código")
-      code = '''
-      # TRATAMIENTO DE DATOS
-      
-      import pandas as pd
-      import numpy as np
-      
-      SISTEMA OPERATIVO
-      
-      import os
-      
-      # GRAFICO
-      import matplotlib.pyplot as plt
-      import matplotlib.ticker as ticker
-      import seaborn as sns
-      import urllib
-      from sklearn.metrics import confusion_matrix
-      from sklearn.metrics import ConfusionMatrixDisplay
-      from sklearn.metrics import classification_report
-      from sklearn.metrics import accuracy_score
-      from sklearn.feature_selection import SelectKBest
-      from sklearn.feature_selection import f_classif
-      from sklearn.ensemble import RandomForestClassifier
-      
-      Defino el algoritmo a utilizar
-      modeloBA= RandomForestClassifier(random_state=0)
-      
-      Entreno el modelo
-      modeloBA.fit(X_train, y_train)
-      
-      accuracy del set de entrenamiento
-      modeloBA.score(X_train,y_train)*100
-      modeloBA.score(X_test,y_test)*100
-     '''
-      st.code(code, language="python", line_numbers=True)
-      
-edades=['ADOLECENCIA','ADULTEZ','INFANCIA','JUVENTUD','PERSONA MAYOR','PRIMERA INFANCIA']
-horas=['MADRUGADA','MAÑANA','NOCHE','TARDE']
-comunas=['CABECERA DEL LLANO','CENTRO', 'GARCIA ROVIRA', 'LA CIUDADELA',
- 'LA CONCORDIA', 'LA PEDREGOSA', 'LAGOS DEL CACIQUE', 'MORRORICO', 'MUTIS',
- 'NORORIENTAL', 'NORTE', 'OCCIDENTAL', 'ORIENTAL', 'PROVENZA', 'SAN FRANCISCO',
- 'SUR', 'SUROCCIDENTE']
-generos=['FEMENINO','MASCULINO']
-diaSemana=['lunes','martes','miércoles','jueves','sábado','viernes','domingo']
+# Opciones del sidebar para entradas del usuario
+st.sidebar.header("*Predicción Delitos Bucaramanga*")
+st.sidebar.image("head.png", caption="", width=200)
+st.sidebar.header("Características de entrada")
 
-st.subheader("Detalle del dataset usado en el proyecto")
+comunas = ['SUR', 'PROVENZA', 'LA CIUDADELA', 'LA CONCORDIA', 'CENTRO',
+           'CABECERA DEL LLANO', 'ORIENTAL', 'OCCIDENTAL', 'SAN FRANCISCO',
+           'NORORIENTAL', 'NORTE', 'SUROCCIDENTE', 'GARCIA ROVIRA',
+           'MORRORICO', 'LA PEDREGOSA', 'MUTIS', 'LAGOS DEL CACIQUE']
 
-st.write("El número de registros cargados es: ", len(df))
-#st.write("comprendido desde ", pd.to_datetime(df['FECHA_COMPLETA']).min(), " hasta ", pd.to_datetime(df['FECHA_COMPLETA']).max())
-st.write("El númerp de tipos de delitos registrados  ", len(df['DELITO_SOLO'].unique()), ", de", len(df['BARRIOS_HECHO'].unique()), "barrios en ",len(df['NOM_COM'].unique()),  " comunas")
-st.write(df.head(5))
-#Opciones de la barra lateral
+meses = list(range(1, 13))
+sexo_victima = ['MASCULINO', 'FEMENINO']
+movil_victima = ['MOTOCICLETA', 'TAXI', 'VEHICULO', 'BUS', 'METRO']
+dias_semana = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO']
+rango_horario = ['MADRUGADA', 'MAÑANA', 'NOCHE', 'TARDE']
+rango_edad = ['ADOLESCENCIA', 'ADULTEZ', 'INFANCIA', 'JUVENTUD', 'PERSONA MAYOR', 'PRIMERA INFANCIA']
 
-logo=Image.open("menu.jpg")
-st.sidebar.write('...')
-st.sidebar.image(logo, width=100)
-st.sidebar.header('Seleccione los datos de entrada')
+# Selectores en el sidebar
+comuna = st.sidebar.selectbox("Seleccione la comuna", comunas)
+mes = st.sidebar.selectbox("Seleccione el mes", meses)
+sexo = st.sidebar.selectbox("Seleccione el genero", sexo_victima)
+movil = st.sidebar.selectbox("Seleccione el movil de la victima", movil_victima)
+dia_semana = st.sidebar.selectbox("Seleccione el dia de la semana", dias_semana)
+horario = st.sidebar.selectbox("Seleccione el rango horario", rango_horario)
+edad = st.sidebar.selectbox("Seleccione el rango de edad", rango_edad)
 
+# Convertir entradas a los valores codificados
+edad_cod = list(codEdad.transform([edad]))[0]
+horario_cod = list(codHorario.transform([horario]))[0]
+dia_cod = list(codDia.transform([dia_semana]))[0]
+comuna_cod = list(codComuna.transform([comuna]))[0]
+sexo_cod = list(codGenero.transform([sexo]))[0]
 
-def seleccionar(generos,comunas, diaSemana,edades,horas):
+# Crear el vector de características a partir de los selectores
+features = np.array([[sexo_cod, mes, comuna_cod, dia_cod, edad_cod, horario_cod]])
 
-  #Filtrar por municipio
+# Realizar la predicción
+prediccion = modeloBA.predict(features)
+probabilidad = modeloBA.predict_proba(features)
 
-  st.sidebar.subheader('Selector del Género')
-  genero=st.sidebar.selectbox("Seleccione el genero",generos)
+# Mostrar los resultados
+st.subheader("Resultados de la Predicción")
+st.write(f"Predicción: {prediccion[0]}")
+st.write("Probabilidad de las clases:")
+for i, clase in enumerate(modeloBA.classes_):
+    st.write(f"- {clase}: {probabilidad[0][i]:.2%}")
 
-  #Filtrar por estaciones
-  st.sidebar.subheader('Selector del dia de la semana')
-  dia=st.sidebar.selectbox("Selecciones del dia de la semana",diaSemana)
-  
-  #Filtrar por estaciones
-  st.sidebar.subheader('Selector del dia del rango de edad')
-  edad=st.sidebar.selectbox("Selecciones la edad",edades)
-  
-  #Filtrar por estaciones
-  st.sidebar.subheader('Selector del rengo de dia')
-  hora=st.sidebar.selectbox("Seleccione la jornada ",horas)
-  
-  st.sidebar.subheader('Selector de mes') 
-  mes=st.sidebar.slider('número del mes', 1, 12, 1)
-  
-  #Filtrar por departamento
-  st.sidebar.subheader('Selector de comuna')
-  comuna=st.sidebar.selectbox("Seleccione la comuna",comunas)
+# Mostrar análisis de delitos similares
+dfc = df[(df["GENERO"] == sexo) & (df["MES_NUM"] == mes) & (df["NOM_COM"] == comuna) & (df["DIA_NOMBRE"] == dia_semana) & (df["TIPOLOGÍA"] == prediccion[0])]
+solo = dfc['DELITO_SOLO'].value_counts() / dfc['DELITO_SOLO'].size
+barrios = dfc['BARRIOS_HECHO'].value_counts() / dfc['BARRIOS_HECHO'].size
 
-  
-  return edad,genero,mes,hora,comuna,dia
+# Gráfico de pastel con las probabilidades
+st.subheader("Gráfico de pastel de probabilidades")
+fig, ax = plt.subplots()
+ax.pie(probabilidad[0], labels=modeloBA.classes_, autopct='%1.1f%%', startangle=90)
+ax.axis('equal')
+st.pyplot(fig)
 
-edad,genero,mes,hora,comuna,dia=seleccionar(generos,comunas,diaSemana,edades,horas)
-
-
-
-#st.write(datos.describe())
-with st.container():
-  st.subheader("Predición")
-  st.title("Predicción de Articulo del Código Civil Colombiano")
-  st.write("""
-           El siguiente es el pronóstico de la clase delito usando el modelo usando los diferentes umbrales
-           """)
-           
-  edadn=list(codEdad.transform([edad]))[0]
-  horan=list(codHorario.transform([hora]))[0]
-  dian=list(codDia.transform([dia]))[0]
-  comunan=list(codComuna.transform([comuna]))[0]
-  generon=list(codGenero.transform([genero]))[0]
-  lista=[[generon,mes,comunan,dian,edadn,horan]]
-  
-  st.write("Se han seleccionado los siguientes parámetros:")
-  st.write("Edad: ", edad, "equvalente a",edadn )
-  st.write("Género : ", genero,"equvalente a",generon)
-  st.write("Mes :", mes,"equvalente a",mes)
-  st.write("Hora", hora,"equvalente a", horan)
-  st.write("Comuna",comuna,"equvalente a", comunan)
-  st.write("dia",dia,"equvalente a",dian) 
-  
-  X_predecir=pd.DataFrame(lista,columns=['GENERO','MES_NUM','NOM_COM','DIA_NOMBRE','RangoEdad','rangoHORARIO'])
-  y_predict=modeloBA.predict(X_predecir)
-  st.markdown('----')
-  st.title(':blue[La predicción es:]' )
-  st.title(y_predict[0])
-  st.markdown('----')
-  dfc=df[(df["GENERO"]==genero) & (df["MES_NUM"]==mes) & (df["NOM_COM"]==comuna) & (df["DIA_NOMBRE"]==dia) & (df["TIPOLOGÍA"]==y_predict[0])]
-  solo=dfc['DELITO_SOLO'].value_counts()/dfc['DELITO_SOLO'].size
-  solo.rename({'count':'Frecuencia'}, inplace = True)
-  barrios=dfc['BARRIOS_HECHO'].value_counts()/dfc['BARRIOS_HECHO'].size
-  barrios.rename({'count':'Frecuencia'}, inplace = True)
-  
-st.markdown('----')    
-with st.container():
-  if len(solo)!=0:
-    st.subheader("Análisis gráficos")
-    st.subheader("Delitos similares cometidos con los parámetros dados")
-    st.write("""
-           Para apoyar el análisis y la toma de decisiones se presentan los delites cometidos en esas
-           opciones.
-           """)
-
-    st.write(dfc[['BARRIOS_HECHO','DESCRIPCION_CONDUCTA', 'ARMAS_MEDIOS',
-        'MOVIL_VICTIMA','DELITO_SOLO', 'MOVIL_AGRESOR', 'CLASE_SITIO']])
+# Mostrar análisis de delitos similares cometidos
+if len(solo) != 0:
+    st.subheader("Análisis gráficos de delitos similares")
+    st.write(dfc[['BARRIOS_HECHO', 'DESCRIPCION_CONDUCTA', 'ARMAS_MEDIOS', 'MOVIL_VICTIMA', 'DELITO_SOLO', 'MOVIL_AGRESOR', 'CLASE_SITIO']])
     
-    st.write('Frecuencia en los barrios de la comuna  '+ comuna + '  es: ', solo )
+    st.write(f"Frecuencia en los barrios de la comuna {comuna}:")
+    st.write(solo)
     
-    st.write('Frecuencia en los barrios de la comuna  '+ comuna + '  es :',barrios )
+    st.write(f"Frecuencia en los barrios de la comuna {comuna}:")
+    st.write(barrios)
     
     fig, ax = plt.subplots(figsize=(10, 10))
-    ax.pie(barrios,labels=barrios.index, autopct='%1.1f%%')
+    ax.pie(barrios, labels=barrios.index, autopct='%1.1f%%')
     st.pyplot(fig)
